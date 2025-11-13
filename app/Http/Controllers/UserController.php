@@ -9,9 +9,28 @@ use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $users = User::paginate(10);
+        $query = User::query();
+
+        // 🔍 Fitur pencarian
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('username', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        // ⚙️ Fitur filter role
+        if ($request->filled('role')) {
+            $query->where('role', $request->role);
+        }
+
+        // Urutkan berdasarkan nama + pagination
+        $users = $query->orderBy('name')->paginate(10)->withQueryString();
+
         return view('users.index', compact('users'));
     }
 
@@ -81,7 +100,7 @@ class UserController extends Controller
             'address' => $validated['address'],
         ]);
 
-        if ($validated['password']) {
+        if (!empty($validated['password'])) {
             $user->update(['password' => Hash::make($validated['password'])]);
         }
 
